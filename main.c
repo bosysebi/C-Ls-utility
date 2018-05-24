@@ -7,18 +7,73 @@
 #include <time.h>
 #include <dirent.h>
 #include <unistd.h>
-#include "common.h"
-#include "mode_to_string.h"
 #include <sys/types.h>
 #include <pwd.h>
 #include <grp.h>
 #include <stdbool.h>
 #include <string.h>
-
-#define UNUSED(VAR) ((void) VAR)
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
+#include <locale.h>
+#include <langinfo.h>
+#include <stdio.h>
+#include <stdint.h>
 
 
 char *getcwd(char *buf, size_t size);
+char *strdup (const char *s);
+
+void mode_to_string(mode_t mode, char str[11])
+{
+    strcpy(str, "----------"); // 10 x -
+    char *p = str;
+
+
+    if (S_ISDIR(mode))
+        *p = 'd';
+    p++;
+
+    // Owner
+
+    if (mode & S_IRUSR)
+        *p = 'r';
+    p++;
+    if (mode & S_IWUSR)
+        *p = 'w';
+    p++;
+    if (mode & S_IXUSR)
+        *p = 'x';
+    p++;
+
+    // Group
+
+    if (mode & S_IRGRP)
+        *p = 'r';
+    p++;
+    if (mode & S_IWGRP)
+        *p = 'w';
+    p++;
+    if (mode & S_IXGRP)
+        *p = 'x';
+    p++;
+
+    // Others
+
+    if (mode & S_IROTH)
+        *p = 'r';
+    p++;
+    if (mode & S_IWOTH)
+        *p = 'w';
+    p++;
+    if (mode & S_IXOTH)
+        *p = 'x';
+    p++;
+
+}
 
 struct maxSizes{
     size_t filesize;
@@ -61,8 +116,13 @@ void printID(fileEntry *entry, struct maxSizes *sizes, char *identifier, int sho
     if(shower == 0 && entry->name[0] == '.'){
         return;
     }
-    if(shower == 1 && entry->name[0] == '.' && entry->name[1] == '.' && !entry->name[3]){
-        return;
+    if(shower == 1){
+        if(strcmp(entry->name, ".")==0){
+            return;
+        }
+        if(strcmp(entry->name, "..")==0){
+            return;
+        }
     }
     while(identifier[i]){
         if(i!=0){
@@ -154,93 +214,217 @@ void resetSizes(struct maxSizes *sizes){
     sizes->username = 0;
 }
 
-void getMaxSizes(fileEntry *entries[], int size, struct maxSizes *sizes){
+void getMaxSizes(fileEntry *entries[], int size, struct maxSizes *sizes, int mode){
     resetSizes(sizes);
     for(int i = 0; i < size; i++){
-        if(strlen(entries[i]->username)>sizes->username){
-            sizes->username = strlen(entries[i]->username);
+        if(mode == 0){
+            if(entries[i]->name[0] != '.'){
+                if(strlen(entries[i]->username)>sizes->username){
+                    sizes->username = strlen(entries[i]->username);
+                }
+                if(strlen(entries[i]->name)>sizes->name){
+                    sizes->name = strlen(entries[i]->name);
+                }
+                if(strlen(entries[i]->groupname)>sizes->groupname){
+                    sizes->groupname = strlen(entries[i]->groupname);
+                }
+                if(strlen(entries[i]->lastmod)>sizes->lastmod){
+                    sizes->lastmod = strlen(entries[i]->lastmod);
+                }
+                if(digitCount(entries[i]->filesize) > sizes->filesize){
+                    sizes->filesize = digitCount(entries[i]->filesize);
+                }
+                if(digitCount(entries[i]->hardLinks) > sizes->hardLinks){
+                    sizes->hardLinks = digitCount(entries[i]->hardLinks);
+                }
+                if(digitCount(entries[i]->inode) > sizes->inode){
+                    sizes->inode = digitCount(entries[i]->inode);
+                }
+            }
+        } else if(mode == 1){
+            if(strcmp(entries[i]->name, "..") != 0){
+                if(strlen(entries[i]->username)>sizes->username){
+                    sizes->username = strlen(entries[i]->username);
+                }
+                if(strlen(entries[i]->name)>sizes->name){
+                    sizes->name = strlen(entries[i]->name);
+                }
+                if(strlen(entries[i]->groupname)>sizes->groupname){
+                    sizes->groupname = strlen(entries[i]->groupname);
+                }
+                if(strlen(entries[i]->lastmod)>sizes->lastmod){
+                    sizes->lastmod = strlen(entries[i]->lastmod);
+                }
+                if(digitCount(entries[i]->filesize) > sizes->filesize){
+                    sizes->filesize = digitCount(entries[i]->filesize);
+                }
+                if(digitCount(entries[i]->hardLinks) > sizes->hardLinks){
+                    sizes->hardLinks = digitCount(entries[i]->hardLinks);
+                }
+                if(digitCount(entries[i]->inode) > sizes->inode){
+                    sizes->inode = digitCount(entries[i]->inode);
+                }
+            }
+        } else {
+            if(strlen(entries[i]->username)>sizes->username){
+                sizes->username = strlen(entries[i]->username);
+            }
+            if(strlen(entries[i]->name)>sizes->name){
+                sizes->name = strlen(entries[i]->name);
+            }
+            if(strlen(entries[i]->groupname)>sizes->groupname){
+                sizes->groupname = strlen(entries[i]->groupname);
+            }
+            if(strlen(entries[i]->lastmod)>sizes->lastmod){
+                sizes->lastmod = strlen(entries[i]->lastmod);
+            }
+            if(digitCount(entries[i]->filesize) > sizes->filesize){
+                sizes->filesize = digitCount(entries[i]->filesize);
+            }
+            if(digitCount(entries[i]->hardLinks) > sizes->hardLinks){
+                sizes->hardLinks = digitCount(entries[i]->hardLinks);
+            }
+            if(digitCount(entries[i]->inode) > sizes->inode){
+                sizes->inode = digitCount(entries[i]->inode);
+            }
         }
-        if(strlen(entries[i]->name)>sizes->name){
-            sizes->name = strlen(entries[i]->name);
-        }
-        if(strlen(entries[i]->groupname)>sizes->groupname){
-            sizes->groupname = strlen(entries[i]->groupname);
-        }
-        if(strlen(entries[i]->lastmod)>sizes->lastmod){
-            sizes->lastmod = strlen(entries[i]->lastmod);
-        }
-        if(digitCount(entries[i]->filesize) > sizes->filesize){
-            sizes->filesize = digitCount(entries[i]->filesize);
-        }
-        if(digitCount(entries[i]->hardLinks) > sizes->hardLinks){
-            sizes->hardLinks = digitCount(entries[i]->hardLinks);
-        }
-        if(digitCount(entries[i]->inode) > sizes->inode){
-            sizes->inode = digitCount(entries[i]->inode);
-        }
+
     }
 }
 
-char* getUserName(struct stat *stat){
+void getUserName(struct stat stat, fileEntry *entry){
     struct passwd *pwd;
-    pwd = getpwuid(stat->st_uid);
-    return pwd->pw_name;
+    pwd = getpwuid(stat.st_uid);
+    if(pwd==NULL){
+        entry->username = NULL;
+        return;
+    }
+    entry->username = strdup(pwd->pw_name);
 }
 
-char* getGroupName(struct stat *stat){
+void getGroupName(struct stat stat, fileEntry *entry){
     struct group *grp;
-    grp = getgrgid(stat->st_uid);
-    return grp->gr_name;
+    grp = getgrgid(stat.st_gid);
+    if(grp==NULL){
+        entry->groupname = NULL;
+        return;
+    }
+    entry->groupname = strdup(grp->gr_name);
 }
 
 void readEntry(struct dirent *dir, fileEntry *entry){
-    int desc = open(dir->d_name, O_RDONLY);
-    if (desc == -1) {
-        perror(dir->d_name);
+    struct stat test = {0};
+    if(stat(dir->d_name, &test)!=0){
         return;
     }
-    struct stat *test = malloc(sizeof(struct stat));
-    int statdesc = fstat(desc, test);
-    if(statdesc == -1){
-        perror(dir->d_name);
-        return;
-    }
-    entry->filesize = test->st_size;
-    entry->username = getUserName(test);
-    entry->groupname = getGroupName(test);
-    strftime(entry->lastmod, 64, "%b %e %Y %R", localtime(&test->st_mtime));
+    entry->filesize = test.st_size;
+    getUserName(test, entry);
+    getGroupName(test, entry);
+    strftime(entry->lastmod, 64, "%b %e %Y %R", localtime(&test.st_mtime));
     entry->name = dir->d_name;
-    mode_to_string(test->st_mode, entry->rights);
-    entry->inode = (long) test->st_ino;
-    entry->hardLinks = test->st_nlink;
-    if(entry->name[0] == '.'){
-        entry->hidden = 0;
-    } else {
-        entry->hidden = 1;
-    }
-    free(test);
+    mode_to_string(test.st_mode, entry->rights);
+    entry->inode = (long) test.st_ino;
+    entry->hardLinks = test.st_nlink;
 }
 
-int comparator(const void *p1, const void *p2){
-    const fileEntry **a = p1;
-    //const fileEntry * b = (fileEntry * )p2;
-    printf("%s name\n",(*a)->name);
-    //printf("%s name\n", b->name);
-    printf("%s name \n", ((fileEntry *)p2)->name);
-    return 0;
+int compare(const void *p1, const void *p2){
+    fileEntry* a = * (fileEntry * * ) p1;
+    fileEntry* b = * (fileEntry * * ) p2;
+    if(a->name[0] != '.' && b->name[0] != '.'){
+        int u = 0;
+        while(a->name[u] && b->name[u]){
+            char m = a->name[u];
+            char n = b->name[u];
+            if(a->name[u] < 91 && a->name[u] > 64 && b->name[u] < 123 && b->name[u] > 96){
+                return -1;
+            }
+            if(b->name[u] < 91 && b->name[u] > 64 && a->name[u] < 123 && a->name[u] > 96){
+                return 1;
+            }
+            if(m>n){
+                return 1;
+            }
+            if(m<n){
+                return -1;
+            }
+            u++;
+        }
+        if(strlen(a->name) > strlen(b->name)){
+            return 1;
+        }
+        if(strlen(a->name) < strlen(b->name)){
+            return -1;
+        }
+        return 0;
+    }
+    if(a->name[0] == '.' && b->name[0] != '.'){
+        int u = 1;
+        while(a->name[u] && b->name[u-1]){
+            char m = a->name[u];
+            char n = b->name[u-1];
+            if(a->name[u] < 91 && a->name[u] > 64 && b->name[u-1] < 123 && b->name[u-1] > 96){
+                return -1;
+            }
+            if(b->name[u-1] < 91 && b->name[u-1] > 64 && a->name[u] < 123 && a->name[u] > 96){
+                return 1;
+            }
+            if(m>n){
+                return 1;
+            }
+            if(m<n){
+                return -1;
+            }
+            u++;
+        }
+        if(strlen(a->name) > strlen(b->name)){
+            return 1;
+        }
+        if(strlen(a->name) < strlen(b->name)){
+            return -1;
+        }
+        return -1;
+    }
+    if(a->name[0] != '.' && b->name[0] == '.'){
+        int u = 1;
+        while(a->name[u-1] && b->name[u]){
+            char m = a->name[u-1];
+            char n = b->name[u];
+            if(a->name[u-1] < 91 && a->name[u-1] > 64 && b->name[u] < 123 && b->name[u] > 96){
+                return -1;
+            }
+            if(b->name[u] < 91 && b->name[u] > 64 && a->name[u-1] < 123 && a->name[u-1] > 96){
+                return 1;
+            }
+            if(m>n){
+                return 1;
+            }
+            if(m<n){
+                return -1;
+            }
+            u++;
+        }
+        if(strlen(a->name) > strlen(b->name)){
+            return 1;
+        }
+        if(strlen(a->name) < strlen(b->name)){
+            return -1;
+        }
+        return 1;
+    }
+    return strcmp(a->name, b->name);
 }
 
 int main(int argc, char *argv[])
 {
     int shower = 0;
     bool string = false;
-    char identifier[8];
+    char identifier[8] = {0};
     for(int k = 1; k < argc; k++){
-        if(strcmp(argv[k], "-a")){
-            shower = 1;
-        }
-        if(strcmp(argv[k], "-A")){
+        if(strcmp(argv[k], "-a")==0){
             shower = 2;
+        }
+        if(strcmp(argv[k], "-A")==0){
+            shower = 1;
         }
         if(strstr(argv[k], "--show=")){
             int in1 = 7;
@@ -280,9 +464,6 @@ int main(int argc, char *argv[])
                         identifier[in2] = 'I';
                         in2++;
                         break;
-                    default:
-                        fprintf(stderr, "wrong identifier");
-                        return 45;
                 }
                 in1++;
             }
@@ -301,23 +482,39 @@ int main(int argc, char *argv[])
     struct dirent *dirEntry = NULL;
     fileEntry *holder[500];
     struct maxSizes *sizes = malloc(sizeof(struct maxSizes));
+    if(!sizes){
+        fprintf(stderr,"error");
+        free(sizes);
+        closedir(dir);
+        return 45;
+    }
     int entries = 0;
     while ((dirEntry = readdir(dir)) != NULL){
         fileEntry *entry = malloc(sizeof(fileEntry));
+        if(!entry){
+            for(int h = 0; h < entries; h++){
+                free(holder[h]);
+            }
+            free(sizes);
+            fprintf(stderr, "Failed to allocate");
+            return 7;
+        }
         readEntry(dirEntry, entry);
         holder[entries] = entry;
         entries++;
     }
-    //printf("Entries: %d", entries);
-    qsort(&holder, entries, sizeof(fileEntry), comparator);
-    getMaxSizes(holder, entries, sizes);
+    qsort(holder, entries, sizeof(fileEntry *), compare);
+    getMaxSizes(holder, entries, sizes, shower);
     for(int j = 0; j < entries; j++){
         printID(holder[j], sizes, identifier, shower);
     }
     for(int j = 0; j < entries; j++){
+        if(holder[j]->username) free(holder[j]->username);
+        if(holder[j]->groupname) free(holder[j]->groupname);
         free(holder[j]);
     }
     free(sizes);
+    closedir(dir);
     return 0;
 }
 
